@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LicensesModule } from './licenses/licenses.module';
 import { License } from './licenses/entities/license.entity';
+import { WordpressModule } from './wordpress/wordpress.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { License } from './licenses/entities/license.entity';
       inject: [ConfigService],
     }),
     LicensesModule,
+    WordpressModule,
   ],
   controllers: [AppController],
   providers: [AppService],

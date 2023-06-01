@@ -1,11 +1,23 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { IssueOrRemoveLicenseDto } from './dto/issue-or-remove-license.dto';
 import { License } from './entities/license.entity';
 import { DataSource, IsNull, MoreThan } from 'typeorm';
+import { WordpressService } from 'src/wordpress/wordpress.service';
+import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
+import { UnpackedTokenDto } from './dto/unpacked-token.dto';
 
 @Injectable()
 export class LicensesService {
-  constructor(private dataSource: DataSource) {}
+  constructor(
+    private dataSource: DataSource,
+    private readonly wordpressService: WordpressService,
+    private configService: ConfigService,
+  ) {}
 
   async issueLicense(issueLicenseDto: IssueOrRemoveLicenseDto) {
     const dateNow = new Date();
@@ -50,10 +62,10 @@ export class LicensesService {
   async getUserLicenses(userId: number) {
     const query = (
       await this.dataSource.manager.query<
-        { swid: string; total: string; unused: string }[]
+        { productKey: string; total: string; unused: string }[]
       >(
         `SELECT
-          swid,
+          swid as productKey,
           COUNT(CASE WHEN userId=${userId} THEN swid END) as total,
           COUNT(CASE WHEN userId=${userId} AND hwid IS NULL THEN swid END) as unused
         FROM
@@ -63,6 +75,94 @@ export class LicensesService {
       )
     ).map((q) => ({ ...q, total: +q.total, unused: +q.unused }));
 
-    return query;
+    const plugins = await this.wordpressService.findPlugins();
+
+    return query
+      .map((q) => ({
+        ...q,
+        name: plugins.find((p) => p.SWID === q.productKey)?.pluginName,
+      }))
+      .filter((q) => q.name && q.total > 0);
+  }
+
+  async unpackToken(token: string) {
+    // TODO: Заглушка
+    return {
+      swid: 'appkey1 yaya',
+      hwid: 'b4b95cea10bbe85138e620694c1d54e6',
+      user: '',
+      pass: '',
+      token:
+        'WVhCd2EyVjVNU0I1WVhsaC5iNGI5NWNlYTEwYmJlODUxMzhlNjIwNjk0YzFkNTRlNi4u',
+    };
+
+    try {
+      const response = await axios.get<{
+        success: boolean;
+        data: UnpackedTokenDto;
+      }>(`${this.configService.get('LICENSE_URL')}/unpack?token=${token}`);
+
+      return response.data.data;
+    } catch (err) {
+      console.log(err);
+      throw new InternalServerErrorException({
+        status: false,
+        message: 'Problems with the licensing service',
+      });
+    }
+  }
+
+  async getLicenseCode(token: string, expire: string) {
+    // TODO: Заглушка
+    return {
+      success: true,
+      data: 'SWhBaUZNVENCbWpSSFl1Tk0wQm9VUFJxRU5nVUUrWXNiTmd6TEJrZ2lHcFpXRUozWVRKV05VMVRRalZaV0d4b0xtSTBZamsxWTJWaE1UQmlZbVU0TlRFek9HVTJNakEyT1RSak1XUTFOR1UyTGsxcVFYbE5lVEIzVFZNd2VFMUJQVDB1LkZ5UVhKUFh5UGxycEs3MjFWU01LWU1kVEllOXhjWU1lRHVGVkhpRkQ2dzQ9',
+    };
+
+    try {
+      const response = await axios.get<{ success: boolean; data: string }>(
+        `${this.configService.get(
+          'LICENSE_URL',
+        )}/license?token=${token}&expires=${expire}`,
+      );
+
+      return response.data;
+    } catch (err) {
+      console.log(err);
+      throw new InternalServerErrorException({
+        status: false,
+        message: 'Problems with the licensing service',
+      });
+    }
+  }
+
+  async findOrActivateLicense(swid: string, userId: number, hwid: string) {
+    const licensesRepository = this.dataSource.getRepository(License);
+
+    const license = await licensesRepository.findOne({
+      where: {
+        swid,
+        userId,
+        expireDate: MoreThan(new Date()),
+        hwid,
+      },
+    });
+
+    if (license) return license;
+
+    const unusedLicense = await licensesRepository.findOne({
+      where: {
+        swid,
+        userId,
+        expireDate: MoreThan(new Date()),
+        hwid: IsNull(),
+      },
+    });
+
+    if (!unusedLicense) return null;
+
+    unusedLicense.hwid = hwid;
+
+    return await licensesRepository.save(unusedLicense);
   }
 }

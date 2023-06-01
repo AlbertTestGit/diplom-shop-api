@@ -1,13 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsPositive } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsPositive, IsString } from 'class-validator';
 
 export class IssueOrRemoveLicenseDto {
   @ApiProperty()
   @IsNotEmpty()
+  @IsNumber()
   userId: number;
 
   @ApiProperty()
   @IsNotEmpty()
+  @IsString()
   swid: string;
 
   @ApiProperty()
