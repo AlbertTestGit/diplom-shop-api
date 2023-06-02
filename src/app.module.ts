@@ -6,6 +6,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LicensesModule } from './licenses/licenses.module';
 import { License } from './licenses/entities/license.entity';
 import { WordpressModule } from './wordpress/wordpress.module';
+import { PluginVersionsModule } from './plugin-versions/plugin-versions.module';
+import { PluginVersion } from './plugin-versions/entities/plugin-version.entity';
 
 @Module({
   imports: [
@@ -18,7 +20,7 @@ import { WordpressModule } from './wordpress/wordpress.module';
         username: configService.get('DB_USER'),
         password: configService.get('DB_PASS'),
         database: configService.get('DB_NAME'),
-        entities: [License],
+        entities: [License, PluginVersion],
         synchronize: true,
       }),
       inject: [ConfigService],
@@ -38,6 +40,7 @@ import { WordpressModule } from './wordpress/wordpress.module';
     }),
     LicensesModule,
     WordpressModule,
+    PluginVersionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
