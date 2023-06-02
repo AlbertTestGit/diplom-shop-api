@@ -8,6 +8,8 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe());
 
+  app.enableCors();
+
   const config = new DocumentBuilder()
     .setTitle('Plugin Store')
     .setVersion('0.0.1')

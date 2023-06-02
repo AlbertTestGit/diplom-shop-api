@@ -1,6 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LicensesModule } from './licenses/licenses.module';
@@ -42,7 +40,7 @@ import { PluginVersion } from './plugin-versions/entities/plugin-version.entity'
     WordpressModule,
     PluginVersionsModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}
